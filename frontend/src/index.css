@@ -1,0 +1,46 @@
+@import "tailwindcss";
+@theme {
+  --breakpoint-md: 770px;
+  --breakpoint-mdd: 474px;
+  --breakpoint-xsm: 350px;
+}
+
+body{
+    background-color: white;
+}
+.myscrolbar {
+    scrollbar-width: 0px; 
+}
+
+.myscrolbar::-webkit-scrollbar {
+    display: none;
+    width: 0px;
+    height: 0px
+}
+
+
+@media(max-width: 450px) {
+    .profile{
+    flex-direction: column;
+    position: absolute;
+    justify-content: start;
+    align-items: start;
+    padding: 10px;
+    top: -200px;
+    right: 0px;
+    background-color: rgb(255, 255, 255);
+    z-index: 9999;
+    width: 38vw;
+    max-height: 15vh;
+    border-radius: 10px;
+    transform: top 0.5s ease-in-out ;
+}
+
+.showProfile{
+    top: 45px;
+    transition: top 0.5s ease-in-out ;
+}
+ 
+    
+}
+
