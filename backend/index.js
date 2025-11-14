@@ -33,16 +33,26 @@ app.get("/", (req, res) => {
 
 const PORT = process.env.PORT || 5001;
 
+// MongoDB connection with better error handling
 mongoose
-  .connect(`${process.env.MONGO_URI}/${process.env.DB_NAME}`)
+  .connect(process.env.MONGO_URI, {
+    serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+    socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
+  })
   .then(() => {
-    console.log("Connected to MongoDB");
+    console.log("✅ Connected to MongoDB successfully");
     app.listen(PORT, () => {
-      console.log(`Server running on http://localhost:${PORT}`);
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
     });
   })
   .catch((err) => {
-    console.error("MongoDB connection error:", err);
+    console.error("❌ MongoDB connection error:", err.message);
+    console.error("💡 Troubleshooting tips:");
+    console.error("   1. Check if your IP address is whitelisted in MongoDB Atlas");
+    console.error("   2. Verify the connection string in .env file");
+    console.error("   3. Ensure MongoDB Atlas cluster is running");
+    console.error("   4. Check network connectivity");
+    process.exit(1);
   });
 
 // Register routes

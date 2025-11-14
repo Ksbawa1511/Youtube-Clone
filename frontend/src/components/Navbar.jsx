@@ -10,14 +10,15 @@ import axios from "axios";
 import { FaUpload } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { FaRegCircleUser } from "react-icons/fa6";
+import { IoMdNotificationsOutline } from "react-icons/io";
 import { setAllVideos } from "../redux/userSlice";
-import { logout } from "../redux/userSlice";
+import { logout, toggleSidebar } from "../redux/userSlice";
 
 function Navbar() {
   const [userInput, setUserInput] = useState("");
   const [videos, setVideos] = useState([]);
-  const [toggle, setToggle] = useState(false);
   const [toggle2, setToggle2] = useState(false);
+  const sidebarOpen = useSelector((state) => state.user.sidebarOpen);
 
   //to set all videos in redux
   const dispatch = useDispatch();
@@ -65,15 +66,7 @@ function Navbar() {
 
   //to toggle menu
   function handleMenu() {
-    const menu = document.getElementById("sidebar");
-    const main = document.getElementById("main");
-    if (!toggle) {
-      main.style.width = "100vw";
-    } else {
-      main.style.width = "80vw";
-    }
-    setToggle(!toggle);
-    menu.classList.toggle("hidden");
+    dispatch(toggleSidebar());
   }
 
   //to search
@@ -107,11 +100,11 @@ function Navbar() {
 
   return (
     <>
-      <div className="flex fixed z-50 top-0 left-0 right-0 justify-between md:py-3 py-2 md:px-6 mdd:px-4  bg-white">
+      <div className="flex fixed z-50 top-0 left-0 right-0 justify-between items-center md:py-2 py-2 md:px-4 mdd:px-4 bg-white border-b border-gray-200">
         <div className="flex  items-center ">
           <div
             onClick={handleMenu}
-            className="md:mr-3 hidden mdd:block mr-1 cursor-pointer"
+            className="md:mr-3 block mdd:hidden md:hidden mr-1 cursor-pointer"
           >
             <LuMenu className="md:text-2xl text-xl " />
           </div>
@@ -121,20 +114,28 @@ function Navbar() {
             </Link>
           </div>
         </div>
-        <div className="flex items-center">
-          <input
-            type="text"
-            onChange={(e) => setUserInput(e.target.value)}
-            value={userInput}
-            placeholder="Search"
-            className="outline-none border text-sm py-[5px] md:text-base border-gray-300 md:p-1.5 mdd:p-[4px] p-0.5 mdd:px-4 md:px-4 px-2 font-semibold rounded-l-3xl w-[50vw] mdd:w-[31vw] md:w-[40vw] "
-          />
-          <button
-            onClick={handleSearch}
-            className="bg-gray-100 py-[5px] cursor-pointer mdd:p-0.5 md:p-1.5 p-1 mdd:px-4 px-2 md:px-4 rounded-r-3xl outline-none border border-gray-300"
-          >
-            <CiSearch className="mdd:text-2xl text-xl " />
-          </button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center flex-1 max-w-[600px]">
+            <input
+              type="text"
+              onChange={(e) => setUserInput(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              value={userInput}
+              placeholder="Search"
+              className="outline-none border text-sm py-[6px] md:text-base border-gray-300 md:px-4 px-3 font-normal rounded-l-full w-full shadow-inner focus:border-blue-500"
+            />
+            <button
+              onClick={handleSearch}
+              className="bg-gray-100 hover:bg-gray-200 py-[6px] cursor-pointer px-4 md:px-6 rounded-r-full outline-none border border-l-0 border-gray-300"
+            >
+              <CiSearch className="text-xl" />
+            </button>
+          </div>
+          {loginPage && (
+            <button className="p-2 hover:bg-gray-100 rounded-full cursor-pointer hidden md:block">
+              <IoMdNotificationsOutline className="text-2xl" />
+            </button>
+          )}
           <div
             onClick={handleUserAction}
             className="mdd:hidden pl-2 w-12 pr-1 cursor-pointer"
@@ -154,46 +155,47 @@ function Navbar() {
             )}
           </div>
         </div>
-        <div ref={profileInfo} className="profile flex items-center   gap-1.5">
-          <Link to={"/uploadvideo"}>
-            <button className="flex items-center gap-2 bg-gray-100 md:py-1.5 py-1 px-3 text-xs md:text-base rounded-3xl outline-none border border-gray-300  font-semibold cursor-pointer hover:bg-gray-200">
-              <FaUpload /> Video
-            </button>
-          </Link>
-          {!channelPage ? (
-            <Link to="/chennel">
-              <button className="flex items-center gap-2 bg-gray-100 md:py-1.5 py-1 px-3 text-xs md:text-base rounded-3xl outline-none border border-gray-300  font-semibold cursor-pointer hover:bg-gray-200">
-                Create chennel
-              </button>
-            </Link>
-          ) : (
-            <Link to="/viewchannel">
-              <button className="flex items-center gap-2 bg-gray-100 md:py-1.5 py-1 px-3 text-xs md:text-base rounded-3xl outline-none border border-gray-300  font-semibold cursor-pointer hover:bg-gray-200">
-                View chennel
-              </button>
-            </Link>
-          )}
-          {!loginPage ? (
-            <Link to="/login">
-              <button className="flex items-center gap-2 text-xs md:text-base bg-gray-100 md:py-[3px] py-1 px-3 md:px-0 text-blue-700 md:pr-2.5 rounded-3xl outline-none border border-gray-300  font-semibold cursor-pointer hover:bg-gray-200">
-                <FaRegCircleUser className="text-3xl hidden md:block text-blue-700" />
-                Sign in
-              </button>
-            </Link>
-          ) : (
-            <Link to="/">
+        <div ref={profileInfo} className="profile flex items-center gap-2">
+          {loginPage && (
+            <>
+              <Link to={"/uploadvideo"} className="hidden md:block">
+                <button className="flex items-center gap-2 bg-gray-100 md:py-1.5 py-1 px-3 text-xs md:text-sm rounded-full outline-none border border-gray-300 font-medium cursor-pointer hover:bg-gray-200">
+                  <FaUpload className="text-lg" />
+                  <span className="hidden lg:inline">Create</span>
+                </button>
+              </Link>
+              {!channelPage ? (
+                <Link to="/chennel" className="hidden md:block">
+                  <button className="flex items-center gap-2 bg-gray-100 md:py-1.5 py-1 px-3 text-xs md:text-sm rounded-full outline-none border border-gray-300 font-medium cursor-pointer hover:bg-gray-200">
+                    Create channel
+                  </button>
+                </Link>
+              ) : (
+                <Link to="/viewchannel" className="hidden md:block">
+                  <button className="flex items-center gap-2 bg-gray-100 md:py-1.5 py-1 px-3 text-xs md:text-sm rounded-full outline-none border border-gray-300 font-medium cursor-pointer hover:bg-gray-200">
+                    Your channel
+                  </button>
+                </Link>
+              )}
               <button
-                className="flex text-[red] mdd:pr-2.5 md:pr-2.5 text-xs  px-3 md:px-0 mdd:px-0  py-1  mdd:py-0 md:text-base items-center gap-2 bg-gray-100  rounded-3xl outline-none border border-gray-300  font-semibold cursor-pointer hover:bg-gray-200"
+                className="flex items-center gap-2 text-xs md:text-sm px-3 py-1.5 rounded-full outline-none font-medium cursor-pointer hover:bg-gray-100 transition-colors"
                 onClick={handleLogout}
               >
-                <div className="h-9 w-9 mdd:h-6 bg-gray-400 md:h-9 rounded-full hidden mdd:block">
+                <div className="h-8 w-8 bg-gray-400 rounded-full overflow-hidden">
                   <img
-                  src={user.user.avatar}
-                  className=" h-full w-full rounded-full text-xs text-blue-700"
-                  alt="avatar"
-                />
-               </div>{" "}
-                Log out
+                    src={user?.user?.avatar}
+                    className="h-full w-full rounded-full object-cover"
+                    alt="avatar"
+                  />
+                </div>
+              </button>
+            </>
+          )}
+          {!loginPage && (
+            <Link to="/login">
+              <button className="flex items-center gap-2 text-xs md:text-sm bg-blue-600 hover:bg-blue-700 md:py-1.5 py-1 px-4 md:px-6 text-white rounded-full outline-none font-medium cursor-pointer transition-colors">
+                <FaRegCircleUser className="text-lg hidden md:block" />
+                Sign in
               </button>
             </Link>
           )}

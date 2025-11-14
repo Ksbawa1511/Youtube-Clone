@@ -25,6 +25,7 @@ function UploadVideo() {
     videoUrl: "",
     description: "",
     category: "",
+    isShort: false,
     channelId: user?.user?.channels[0]?._id,
   });
 
@@ -61,6 +62,7 @@ function UploadVideo() {
         videoUrl: "",
         description: "",
         category: "",
+        isShort: false,
       });
     } catch (error) {
       const errMsg =
@@ -167,6 +169,17 @@ function UploadVideo() {
             </option>
           ))}
         </select>
+
+        <label className="flex items-center gap-2 font-semibold text-gray-700">
+          <input
+            type="checkbox"
+            name="isShort"
+            checked={videoData.isShort}
+            onChange={(e) => setVideoData({ ...videoData, isShort: e.target.checked })}
+            className="w-4 h-4"
+          />
+          Mark as Short Video
+        </label>
 
         <button
           type="submit"

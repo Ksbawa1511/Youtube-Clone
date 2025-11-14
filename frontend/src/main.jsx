@@ -20,6 +20,10 @@ const UploadVideo = lazy(() => import("./pages/UplodeVideo.jsx"));
 const Video = lazy(() => import("./pages/VideoPlayer.jsx"));
 const UpdateVideo = lazy(() => import("./pages/UpdateVideo.jsx"));
 const UpdateChannel = lazy(() => import("./pages/UpdateChannel.jsx"));
+const LikedVideos = lazy(() => import("./pages/LikedVideos.jsx"));
+const Subscriptions = lazy(() => import("./pages/Subscriptions.jsx"));
+const History = lazy(() => import("./pages/History.jsx"));
+const Shorts = lazy(() => import("./pages/Shorts.jsx"));
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -28,10 +32,15 @@ const router = createBrowserRouter(
       <Route path="login" element={<Login />} />
       <Route path="chennel" element={<Chennel />} />
       <Route path="viewchannel" element={<ViewChannel />} />
+      <Route path="channel/:channelId" element={<ViewChannel />} />
       <Route path="uploadvideo" element={<UploadVideo />} />
       <Route path="video/:videoId" element={<Video />} />
       <Route path="updatevideo/:channelId" element={<UpdateVideo />} />
       <Route path="updatechannel/:channelId" element={<UpdateChannel />} />
+      <Route path="liked-videos" element={<LikedVideos />} />
+      <Route path="subscriptions" element={<Subscriptions />} />
+      <Route path="history" element={<History />} />
+      <Route path="shorts/:videoId?" element={<Shorts />} />
     </Route>
   )
 );

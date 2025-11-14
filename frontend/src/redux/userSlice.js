@@ -3,6 +3,7 @@ import { createSlice } from "@reduxjs/toolkit";
 const initialState = {
   user: null,
   userInput: [],
+  sidebarOpen: false,
 };
 
 export const userSlice = createSlice({
@@ -20,9 +21,15 @@ export const userSlice = createSlice({
     setAllVideos: (state, action) => {
       state.userInput = action.payload;
     },
+    toggleSidebar: (state) => {
+      state.sidebarOpen = !state.sidebarOpen;
+    },
+    setSidebarOpen: (state, action) => {
+      state.sidebarOpen = action.payload;
+    },
   },
 });
 
-export const { login, logout, setAllVideos } = userSlice.actions;
+export const { login, logout, setAllVideos, toggleSidebar, setSidebarOpen } = userSlice.actions;
 
 export default userSlice.reducer;

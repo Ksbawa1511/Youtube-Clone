@@ -7,6 +7,7 @@ const videoSchema = new mongoose.Schema({
   videoUrl: { type: String },
   description: { type: String },
   category: { type: String },
+  isShort: { type: Boolean, default: false }, // Flag to identify shorts
   channelId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Channel",

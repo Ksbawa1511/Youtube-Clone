@@ -12,6 +12,8 @@ import { toast } from "react-toastify";
 import { FiEdit } from "react-icons/fi";
 import { AiOutlineDelete } from "react-icons/ai";
 import { FaRegCircleUser } from "react-icons/fa6";
+import Sidebar from "../components/Sidebar";
+import { getThumbnailFallback } from "../utils/videoUtils";
 
 function Video() {
   const [commentInput, setCommentInput] = useState("");
@@ -21,6 +23,12 @@ function Video() {
   const { videoId } = useParams();
   const [isUpdateComment, setIsUpdateComment] = useState(false);
   const [commentId, setCommentId] = useState("");
+  const [isLiked, setIsLiked] = useState(false);
+  const [isDisliked, setIsDisliked] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [videoLikes, setVideoLikes] = useState(0);
+  const [videoDislikes, setVideoDislikes] = useState(0);
+  const [channelSubscribers, setChannelSubscribers] = useState(0);
 
   //to fetch videos from redux
   const videos = useSelector((state) => state.user.userInput);
@@ -35,19 +43,22 @@ function Video() {
 
   //to fetch all videos
   useEffect(() => {
-    axios
-      .get(`${baseURL}/api/videos/`, {
-        withCredentials: true,
-      })
-      .then((response) => {
-        setAllVideos(response?.data?.allVideos);
-      })
-      .catch((error) => {
+    async function fetchVideos() {
+      try {
+        const response = await axios.get(`${baseURL}/api/videos/`, {
+          withCredentials: true,
+        });
+        const { filterAvailableVideos } = await import("../utils/videoUtils");
+        const availableVideos = filterAvailableVideos(response?.data?.allVideos || []);
+        setAllVideos(availableVideos);
+      } catch (error) {
         console.error(
-          "Error fetching comments:",
+          "Error fetching videos:",
           error.response?.data || error.message
         );
-      });
+      }
+    }
+    fetchVideos();
   }, []);
 
   //to fetch comments based on video id
@@ -95,6 +106,134 @@ function Video() {
 
   const video = videos.find((video) => video._id === videoId);
 
+  // Initialize video state
+  useEffect(() => {
+    if (video) {
+      setVideoLikes(video.likes || 0);
+      setVideoDislikes(video.dislikes || 0);
+      setChannelSubscribers(video.channelId?.subscribers || 0);
+    }
+  }, [video]);
+
+  // Check if user has liked/disliked/subscribed (if logged in)
+  useEffect(() => {
+    async function fetchVideoStatus() {
+      if (videoId) {
+        try {
+          const response = await axios.get(
+            `${baseURL}/api/videos/${videoId}/status`,
+            { withCredentials: true }
+          );
+          setIsLiked(response.data.liked || false);
+          setIsDisliked(response.data.disliked || false);
+          setIsSubscribed(response.data.subscribed || false);
+        } catch (error) {
+          // If not logged in or error, just keep defaults
+          setIsLiked(false);
+          setIsDisliked(false);
+          setIsSubscribed(false);
+        }
+      }
+    }
+    fetchVideoStatus();
+  }, [user, videoId, baseURL]);
+
+  // Add video to watch history when video loads
+  useEffect(() => {
+    async function addToWatchHistory() {
+      if (videoId && user?.user) {
+        try {
+          await axios.post(
+            `${baseURL}/api/videos/${videoId}/history`,
+            {},
+            { withCredentials: true }
+          );
+        } catch (error) {
+          // Silently fail - history tracking is optional
+          console.log("Could not add to history:", error.message);
+        }
+      }
+    }
+    
+    // Add to history after a short delay (to ensure video is actually being watched)
+    const timer = setTimeout(() => {
+      addToWatchHistory();
+    }, 2000); // 2 seconds delay
+
+    return () => clearTimeout(timer);
+  }, [videoId, user, baseURL]);
+
+  // Handle like video
+  async function handleLike() {
+    if (!user?.user) {
+      toast.error("Please login to like videos");
+      return;
+    }
+    try {
+      const response = await axios.post(
+        `${baseURL}/api/videos/${videoId}/like`,
+        {},
+        { withCredentials: true }
+      );
+      setVideoLikes(response.data.video.likes);
+      setVideoDislikes(response.data.video.dislikes);
+      setIsLiked(response.data.liked);
+      setIsDisliked(false);
+      toast.success(response.data.liked ? "Video liked!" : "Video unliked");
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || "Failed to like video";
+      toast.error(errorMessage);
+    }
+  }
+
+  // Handle dislike video
+  async function handleDislike() {
+    if (!user?.user) {
+      toast.error("Please login to dislike videos");
+      return;
+    }
+    try {
+      const response = await axios.post(
+        `${baseURL}/api/videos/${videoId}/dislike`,
+        {},
+        { withCredentials: true }
+      );
+      setVideoLikes(response.data.video.likes);
+      setVideoDislikes(response.data.video.dislikes);
+      setIsDisliked(response.data.disliked);
+      setIsLiked(false);
+      toast.success(response.data.disliked ? "Video disliked" : "Dislike removed");
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || "Failed to dislike video";
+      toast.error(errorMessage);
+    }
+  }
+
+  // Handle subscribe to channel
+  async function handleSubscribe() {
+    if (!user?.user) {
+      toast.error("Please login to subscribe");
+      return;
+    }
+    if (!video?.channelId?._id) {
+      toast.error("Channel not found");
+      return;
+    }
+    try {
+      const response = await axios.post(
+        `${baseURL}/api/channels/${video.channelId._id}/subscribe`,
+        {},
+        { withCredentials: true }
+      );
+      setChannelSubscribers(response.data.channel.subscribers);
+      setIsSubscribed(response.data.subscribed);
+      toast.success(response.data.subscribed ? "Subscribed!" : "Unsubscribed");
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || "Failed to subscribe";
+      toast.error(errorMessage);
+    }
+  }
+
   //handle edit comment
   function handleEdit(comment) {
     setCommentId(comment._id);
@@ -141,8 +280,13 @@ function Video() {
 
   return (
     <>
-      <div className="mdd:mt-16 mt-12 flex flex-col mdd:flex-row ">
-        <div className=" mdd:w-[64%] w-[100%] mdd:ml-2.5 md:ml-7 mt-2.5   max-h-[130vh]">
+      <div className="flex md:mt-17 mt-10 mdd:mt-12">
+        <div className="md:w-[20vw] mdd:w-[20vw] h-[100vh]">
+          <Sidebar />
+        </div>
+        <div className="mdd:w-[80vw] md:w-[80vw] w-[100vw]">
+          <div className="mdd:mt-16 mt-12 flex flex-col mdd:flex-row ">
+            <div className=" mdd:w-[64%] w-[100%] mdd:ml-2.5 md:ml-7 mt-2.5   max-h-[130vh]">
           <div>
             {video?.videoUrl?.includes('youtube.com/embed') ? (
               <iframe
@@ -184,31 +328,50 @@ function Video() {
                     alt=""
                   />
                 </div>
-                <div className="flex  md:gap-0 flex-col">
-                  <h3 className="text-md  font-semibold">
-                    {" "}
-                    {video?.channelId?.channelName || video?.uploader?.username}
-                  </h3>
-                  <p className="font-semibold text-gray-600 ml-1 text-xs mdd:text-sm">
-                    {" "}
-                    {video?.channelId?.subscribers} subscribers
-                  </p>
-                </div>
+                <Link to={`/channel/${video?.channelId?._id || video?.channelId}`}>
+                  <div className="flex  md:gap-0 flex-col cursor-pointer">
+                    <h3 className="text-md  font-semibold hover:text-blue-600">
+                      {" "}
+                      {video?.channelId?.channelName || video?.uploader?.username}
+                    </h3>
+                    <p className="font-semibold text-gray-600 ml-1 text-xs mdd:text-sm">
+                      {" "}
+                      {channelSubscribers.toLocaleString()} subscribers
+                    </p>
+                  </div>
+                </Link>
               </div>
-              <div className="bg-black hover:bg-gray-700 cursor-pointer text-xs md:text-base md:ml-3 ml-9 xsm:ml-0.5 font-semibold text-white px-4 mdd:py-1.5 py-1 rounded-3xl">
-                subscribe
-              </div>
+              <button
+                onClick={handleSubscribe}
+                className={`${
+                  isSubscribed
+                    ? "bg-gray-600 hover:bg-gray-700"
+                    : "bg-black hover:bg-gray-700"
+                } cursor-pointer text-xs md:text-base md:ml-3 ml-9 xsm:ml-0.5 font-semibold text-white px-4 mdd:py-1.5 py-1 rounded-3xl`}
+              >
+                {isSubscribed ? "Subscribed" : "Subscribe"}
+              </button>
             </div>
             <div className="myscrolbar flex xsm:overflow-x-scroll h-7 mdd:h-9 md:overflow-x-hidden  xsm:hide-scroll-bar gap-2 text-xs mdd:text-base">
               <div className="bg-gray-100 cursor-pointer flex justify-center items-center font-semibold text-xs  mdd:text-base py-1.5 rounded-3xl">
-                <span className="flex items-center hover:bg-gray-200 h-9 rounded-l-3xl px-2 ">
+                <span
+                  onClick={handleLike}
+                  className={`flex items-center hover:bg-gray-200 h-9 rounded-l-3xl px-2 ${
+                    isLiked ? "bg-blue-100 text-blue-600" : ""
+                  }`}
+                >
                   <AiOutlineLike className="text-xl " />{" "}
-                  <span className="mx-1.5"> {video?.likes} </span>{" "}
+                  <span className="mx-1.5"> {videoLikes} </span>{" "}
                 </span>
                 |
-                <span className="flex items-center hover:bg-gray-200 h-9 rounded-r-3xl px-2">
+                <span
+                  onClick={handleDislike}
+                  className={`flex items-center hover:bg-gray-200 h-9 rounded-r-3xl px-2 ${
+                    isDisliked ? "bg-red-100 text-red-600" : ""
+                  }`}
+                >
                   {" "}
-                  <span className="mx-1.5">{video?.dislikes}</span>
+                  <span className="mx-1.5">{videoDislikes}</span>
                   <AiOutlineDislike className="text-xl  " />
                 </span>
               </div>
@@ -217,7 +380,7 @@ function Video() {
               </div>
               <div className="bg-gray-100 cursor-pointer hover:bg-gray-200 font-semibold px-3 py-1.5 rounded-3xl flex justify-center items-center  gap-2">
                 <LiaDownloadSolid className="text-xl" />
-                Downlode
+                Download
               </div>
               <div className="bg-gray-100 cursor-pointer hover:bg-gray-200 font-semibold px-3 py-1.5 rounded-3xl items-center flex">
                 {" "}
@@ -357,11 +520,26 @@ function Video() {
             <Link key={video?._id} to={`/video/${video?._id}`}>
               <div className="flex flex-col md:flex-row ml-[2%] gap-3">
                 <div className="md:w-[42%] w-[100%]  md:h-[16vh] mdd:h-[13vh] h-[25vh]">
-                  <img
-                    src={video?.thumbnailUrl}
-                    alt=""
-                    className="w-full h-full rounded-md bg-gray-300"
-                  />
+                  {video?.thumbnailUrl ? (
+                    <img
+                      src={video.thumbnailUrl}
+                      alt=""
+                      className="w-full h-full rounded-md object-cover"
+                      onError={async (e) => {
+                        const { getThumbnailFallback } = await import("../utils/videoUtils");
+                        const gradient = getThumbnailFallback(video);
+                        e.target.style.display = 'none';
+                        const fallback = document.createElement('div');
+                        fallback.className = `w-full h-full rounded-md bg-gradient-to-br ${gradient} flex items-center justify-center`;
+                        fallback.innerHTML = '<span class="text-white text-xs font-semibold">Video</span>';
+                        e.target.parentNode.appendChild(fallback);
+                      }}
+                    />
+                  ) : (
+                    <div className={`w-full h-full rounded-md bg-gradient-to-br ${getThumbnailFallback(video || {})} flex items-center justify-center`}>
+                      <span className="text-white text-xs font-semibold">Video</span>
+                    </div>
+                  )}
                 </div>
                 <div className="w-[60%]">
                   <h2 className="text-md line-clamp-2 font-semibold">
@@ -382,6 +560,8 @@ function Video() {
               </div>
             </Link>
           ))}
+        </div>
+          </div>
         </div>
       </div>
     </>

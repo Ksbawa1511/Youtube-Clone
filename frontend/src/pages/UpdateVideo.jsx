@@ -28,6 +28,7 @@ function UpdateVideo() {
     videoUrl: "",
     description: "",
     category: "",
+    isShort: false,
     channelId: user?.user?.channels[0]?._id,
   });
 
@@ -51,6 +52,7 @@ function UpdateVideo() {
         videoUrl: video.videoUrl,
         description: video.description,
         category: video.category,
+        isShort: video.isShort || false,
       });
     }
   }, []);
@@ -168,6 +170,17 @@ function UpdateVideo() {
             </option>
           ))}
         </select>
+
+        <label className="flex items-center gap-2 font-semibold text-gray-700">
+          <input
+            type="checkbox"
+            name="isShort"
+            checked={videoData.isShort}
+            onChange={(e) => setVideoData({ ...videoData, isShort: e.target.checked })}
+            className="w-4 h-4"
+          />
+          Mark as Short Video
+        </label>
 
         <button
           type="submit"

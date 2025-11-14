@@ -116,3 +116,138 @@ export function logout(req, res) {
     return res.status(500).json({ message: "Internal server error", error: error.message });
   }
 }
+
+export async function getLikedVideos(req, res) {
+  try {
+    const userId = req.user?._id || req.user;
+    const { User } = await import("../models/user.model.js");
+    const { Video } = await import("../models/video.model.js");
+    
+    const user = await User.findById(userId).populate({
+      path: "likedVideos",
+      populate: [
+        { path: "uploader", select: "username avatar" },
+        { path: "channelId", select: "channelName subscribers" }
+      ]
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json({ 
+      message: "Liked videos fetched successfully", 
+      likedVideos: user.likedVideos || [] 
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+}
+
+export async function getSubscribedChannels(req, res) {
+  try {
+    const userId = req.user?._id || req.user;
+    const { User } = await import("../models/user.model.js");
+    const { Channel } = await import("../models/channel.model.js");
+    const { Video } = await import("../models/video.model.js");
+    
+    const user = await User.findById(userId).populate({
+      path: "subscribedChannels",
+      populate: {
+        path: "videos",
+        populate: [
+          { path: "uploader", select: "username avatar" },
+          { path: "channelId", select: "channelName subscribers" }
+        ]
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Get all videos from subscribed channels
+    const subscribedChannels = user.subscribedChannels || [];
+    const allVideos = [];
+    
+    for (const channel of subscribedChannels) {
+      if (channel.videos && channel.videos.length > 0) {
+        allVideos.push(...channel.videos);
+      }
+    }
+
+    // Sort by upload date (newest first)
+    allVideos.sort((a, b) => new Date(b.uploadDate) - new Date(a.uploadDate));
+
+    return res.status(200).json({ 
+      message: "Subscribed channels videos fetched successfully", 
+      channels: subscribedChannels,
+      videos: allVideos
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+}
+
+export async function getWatchHistory(req, res) {
+  try {
+    const userId = req.user?._id || req.user;
+    const { User } = await import("../models/user.model.js");
+    
+    if (!userId) {
+      return res.status(401).json({ message: "Please login to view watch history" });
+    }
+
+    const user = await User.findById(userId).populate({
+      path: "watchHistory.video",
+      populate: [
+        { path: "uploader", select: "username avatar" },
+        { path: "channelId", select: "channelName subscribers" }
+      ]
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Sort by watchedAt (most recent first)
+    const history = (user.watchHistory || []).sort(
+      (a, b) => new Date(b.watchedAt) - new Date(a.watchedAt)
+    );
+
+    return res.status(200).json({ 
+      message: "Watch history fetched successfully", 
+      history: history.map(entry => ({
+        video: entry.video,
+        watchedAt: entry.watchedAt
+      }))
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+}
+
+export async function clearWatchHistory(req, res) {
+  try {
+    const userId = req.user?._id || req.user;
+    const { User } = await import("../models/user.model.js");
+    
+    if (!userId) {
+      return res.status(401).json({ message: "Please login" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.watchHistory = [];
+    await user.save();
+
+    return res.status(200).json({ 
+      message: "Watch history cleared successfully"
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+}

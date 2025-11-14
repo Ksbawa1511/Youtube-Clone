@@ -12,13 +12,13 @@ export async function getChannels(req, res) {
 export async function getChannelById(req, res) {
   try {
     const channelId = req.params.channelId;
-    const channel = await Channel.findById(channelId);
+    const channel = await Channel.findById(channelId).populate("owner", "username email avatar");
     if (!channel) {
       return res.status(404).json({ message: "Channel not found" });
     }
-    res.status(200).json({massage:"Fetch channel",channel});
+    res.status(200).json({message:"Fetch channel",channel});
   } catch (error) {
-    res.status(500).json({ message: "Error fetching channel" });
+    res.status(500).json({ message: "Error fetching channel", error: error.message });
   }
 }
 
@@ -61,6 +61,45 @@ export async function deleteChennel(req, res) {
     return res.status(200).json({massage:"chennel deleted successfully",deletedChennel})
   } catch (error) {
     return res.status(500).json({massage:"Internal server error",error:error.massage})
+  }
+}
+
+export async function subscribeChannel(req, res) {
+  try {
+    const channelId = req.params.channelId;
+    const userId = req.user?._id || req.user;
+    const { User } = await import("../models/user.model.js");
+    
+    const channel = await Channel.findById(channelId);
+    if (!channel) {
+      return res.status(404).json({ message: "Channel not found" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if user already subscribed
+    const alreadySubscribed = user.subscribedChannels.includes(channelId);
+
+    if (alreadySubscribed) {
+      // Unsubscribe: remove from subscribed, decrease subscribers
+      user.subscribedChannels = user.subscribedChannels.filter(id => id.toString() !== channelId);
+      channel.subscribers = Math.max(0, channel.subscribers - 1);
+      await user.save();
+      await channel.save();
+      return res.status(200).json({ message: "Unsubscribed from channel", channel, subscribed: false });
+    } else {
+      // Subscribe: add to subscribed, increase subscribers
+      user.subscribedChannels.push(channelId);
+      channel.subscribers = (channel.subscribers || 0) + 1;
+      await user.save();
+      await channel.save();
+      return res.status(200).json({ message: "Subscribed to channel", channel, subscribed: true });
+    }
+  } catch (error) {
+    return res.status(500).json({ message: "Internal server error", error: error.message });
   }
 }
 
